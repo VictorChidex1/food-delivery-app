@@ -13,13 +13,16 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@paystack/inline-js": "^2.22.7",
+    "clsx": "^2.1.1",
+    "framer-motion": "^11.18.2",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.460.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-leaflet": "^4.2.1",
     "react-router-dom": "^6.22.3",
-    "framer-motion": "^11.0.8",
-    "leaflet": "^1.9.4",
-    "react-leaflet": "^4.2.1"
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
