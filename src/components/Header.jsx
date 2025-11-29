@@ -4,9 +4,10 @@ import { Search, ShoppingBag, MapPin, Menu, X, ChevronDown, Box, Heart, CreditCa
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import Logo from './Logo'; // Reverted to your custom Logo
+import Logo from './Logo'; 
+import { useSearch } from '../context/SearchContext';
 
-// --- SHADCN UI HELPERS ---
+
 function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
@@ -16,7 +17,6 @@ const Button = React.forwardRef(({ className, variant = "default", size = "defau
     default: "bg-[#FF5200] text-white hover:bg-orange-600 shadow-sm",
     outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
     ghost: "hover:bg-gray-100 hover:text-gray-900",
-    link: "text-primary underline-offset-4 hover:underline",
   };
   const sizes = {
     default: "h-10 px-4 py-2",
@@ -27,7 +27,7 @@ const Button = React.forwardRef(({ className, variant = "default", size = "defau
     <button
       ref={ref}
       className={cn(
-        "inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5200] disabled:opacity-50",
         variants[variant],
         sizes[size],
         className
@@ -42,7 +42,7 @@ const Input = React.forwardRef(({ className, type, ...props }, ref) => {
     <input
       type={type}
       className={cn(
-        "flex h-10 w-full rounded-full border border-gray-200 bg-gray-100 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5200] focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 transition-all",
+        "flex h-10 w-full rounded-full border border-gray-200 bg-gray-100 px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5200] disabled:cursor-not-allowed disabled:opacity-50 transition-all",
         className
       )}
       ref={ref}
@@ -56,10 +56,14 @@ const Input = React.forwardRef(({ className, type, ...props }, ref) => {
 const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // 2. USE CONTEXT
+  // This connects the input to the global "Brain"
+  const { searchQuery, setSearchQuery } = useSearch();
+
   const [user, setUser] = useState(null);
   const [cartCount, setCartCount] = useState(0);
   const [scrolled, setScrolled] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   
   // Menu States
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -74,14 +78,14 @@ const Header = () => {
     { icon: HelpCircle, label: "Support", link: "/support" },
   ];
 
-  // 1. Check Scroll
+  // Check Scroll
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // 2. Load Data (User & Cart)
+  // Load Data
   useEffect(() => {
     const checkData = () => {
       const storedUser = localStorage.getItem('user');
@@ -96,14 +100,13 @@ const Header = () => {
     checkData(); 
     window.addEventListener('storage', checkData);
     const interval = setInterval(checkData, 1000); 
-
     return () => {
       window.removeEventListener('storage', checkData);
       clearInterval(interval);
     };
   }, [location]);
 
-  // 3. Click Outside Listener for Profile Dropdown
+  // Click Outside Listener
   useEffect(() => {
     function handleClickOutside(event) {
       if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
@@ -123,9 +126,12 @@ const Header = () => {
     window.location.reload();
   };
 
-  const handleSearch = (e) => {
+  const handleSearchSubmit = (e) => {
     e.preventDefault();
-    if(searchQuery.trim()) console.log("Searching for:", searchQuery);
+    // If user searches while on another page, redirect to Home
+    if (location.pathname !== '/') {
+      navigate('/');
+    }
   };
 
   return (
@@ -137,15 +143,14 @@ const Header = () => {
     >
       <div className="max-w-7xl mx-auto flex h-20 items-center justify-between px-4 md:px-6 gap-4">
         
-        {/* 1. LOGO */}
+        {/* LOGO */}
         <Link to="/" className="shrink-0 hover:opacity-90 transition-opacity">
           <Logo />
         </Link>
 
-        {/* 2. SEARCH BAR (Desktop) */}
+        {/* SEARCH BAR (Desktop) */}
         <div className="hidden md:flex flex-1 max-w-xl mx-8">
-          <form onSubmit={handleSearch} className="relative w-full group flex items-center">
-            {/* Location Badge inside Search */}
+          <form onSubmit={handleSearchSubmit} className="relative w-full group flex items-center">
             <div className="absolute left-1 bg-white rounded-full px-3 py-1.5 shadow-sm flex items-center gap-1 text-xs font-bold text-gray-700 border border-gray-100">
                <MapPin size={14} className="text-[#FF5200]" />
                <span>Lagos</span>
@@ -153,20 +158,20 @@ const Header = () => {
             
             <Input 
               placeholder="Search for 'Jollof', 'Suya'..." 
-              className="pl-24 pr-12 h-12 bg-gray-50 focus:bg-white border-transparent"
+              className="pl-24 pr-12 h-12 bg-gray-50 focus:bg-white border-transparent transition-all"
+              // 3. BIND INPUT TO CONTEXT
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            
             <button type="submit" className="absolute right-1.5 bg-[#FF5200] hover:bg-orange-600 text-white p-2 rounded-full transition-all shadow-md hover:scale-105">
               <Search size={16} strokeWidth={2.5} />
             </button>
           </form>
         </div>
 
-        {/* 3. DESKTOP ACTIONS */}
+        {/* DESKTOP ACTIONS */}
         <div className="hidden md:flex items-center gap-3">
-          
-          {/* User Profile Dropdown */}
           {user ? (
             <div className="relative" ref={profileDropdownRef}>
               <button 
@@ -185,7 +190,6 @@ const Header = () => {
                 <ChevronDown size={16} className={`text-gray-400 transition-transform duration-200 ${isProfileOpen ? 'rotate-180' : ''}`} />
               </button>
 
-              {/* Dropdown Menu */}
               <AnimatePresence>
                 {isProfileOpen && (
                   <motion.div 
@@ -229,7 +233,6 @@ const Header = () => {
             </div>
           )}
 
-          {/* Cart Button */}
           <Link to="/checkout">
             <Button variant="ghost" size="icon" className="relative bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-full h-12 w-12">
               <ShoppingBag size={20} />
@@ -245,10 +248,9 @@ const Header = () => {
               </AnimatePresence>
             </Button>
           </Link>
-
         </div>
 
-        {/* 4. MOBILE ACTIONS */}
+        {/* MOBILE ACTIONS */}
         <div className="flex md:hidden items-center gap-3">
           <Link to="/checkout" className="relative text-gray-900 bg-gray-100 p-2.5 rounded-full">
             <ShoppingBag size={22} />
@@ -264,7 +266,7 @@ const Header = () => {
         </div>
       </div>
 
-      {/* 5. MOBILE MENU (Slide Down) */}
+      {/* MOBILE MENU */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div 
@@ -274,10 +276,15 @@ const Header = () => {
             className="md:hidden bg-white border-b border-gray-100 shadow-xl overflow-hidden"
           >
             <div className="p-4 flex flex-col gap-4">
-              {/* Mobile Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input placeholder="Search food..." className="pl-9 bg-gray-50" />
+                <Input 
+                  placeholder="Search food..." 
+                  className="pl-9 bg-gray-50"
+                  // 4. BIND MOBILE INPUT TOO
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
               </div>
 
               {user ? (

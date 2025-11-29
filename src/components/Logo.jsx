@@ -40,10 +40,6 @@ const Logo = ({ className = "" }) => {
           <span className="text-[#FF5200]">Flow</span>
         </div>
         
-        {/* Subtitle: NAIJA DELIVERY */}
-        <span className="text-[10px] font-bold text-gray-500 tracking-[0.15em] uppercase leading-tight mt-1">
-          Naija Delivery
-        </span>
       </div>
     </div>
   );

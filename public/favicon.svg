@@ -1,0 +1,17 @@
+<svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- The Pin Shape (Orange Body) -->
+  <path 
+    d="M12 22C12 22 20 16 20 11C20 6.58172 16.4183 3 12 3C7.58172 3 4 6.58172 4 11C4 16 12 22 12 22Z" 
+    fill="#FF5200"
+  />
+  <!-- The Fork Icon (White, sitting inside the pin) -->
+  <path 
+    d="M12 14V17M12 6V11M9 6V11C9 12.6569 10.3431 14 12 14C13.6569 14 15 12.6569 15 11V6" 
+    stroke="white" 
+    stroke-width="2" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"
+  />
+  <!-- Fork Handle Base -->
+  <path d="M12 17V19" stroke="white" stroke-width="2" stroke-linecap="round"/>
+</svg>

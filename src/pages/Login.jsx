@@ -1,38 +1,64 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 
 const Login = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
-    // SIMULATE LOGIN: Save fake user to localStorage
-    const fakeUser = { fullName: "Victor Chidex", email: email };
-    localStorage.setItem('user', JSON.stringify(fakeUser));
-    
-    // Redirect to Home
-    navigate('/'); 
-    
-    // Force reload to update Navbar state (simple fix for now)
-    window.location.reload();
+
+    // 1. Get our "Database"
+    const existingUsers = JSON.parse(localStorage.getItem("usersDB") || "[]");
+
+    // 2. Find the user with matching email AND password
+    const validUser = existingUsers.find(
+      (user) =>
+        user.email.toLowerCase() === email.toLowerCase() &&
+        user.password === password
+    );
+
+    if (validUser) {
+      // SUCCESS: User found in database!
+      // We extract the REAL fullName they signed up with.
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          fullName: validUser.fullName,
+          email: validUser.email,
+        })
+      );
+
+      // Redirect to Home
+      // toast.success(`Welcome back, ${validUser.fullName}!`);
+      navigate("/");
+      window.location.reload();
+    } else {
+      // FAILURE: No match found.
+      // Strict Access: We do NOT create a temporary profile. We block them.
+      alert(
+        "Invalid email or password. Please Sign Up if you don't have an account."
+      );
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-2xl shadow-xl border border-gray-100">
-        
         <div className="text-center">
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
             Welcome Back
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Don't have an account?{' '}
-            <Link to="/signup" className="font-medium text-[#FF5200] hover:text-orange-600 transition-colors">
+            Don't have an account?{" "}
+            <Link
+              to="/signup"
+              className="font-medium text-[#FF5200] hover:text-orange-600 transition-colors"
+            >
               Sign up for free
             </Link>
           </p>
@@ -40,7 +66,6 @@ const Login = () => {
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
-            
             {/* Email Field */}
             <div className="relative group">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -74,7 +99,11 @@ const Login = () => {
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none cursor-pointer"
               >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
               </button>
             </div>
           </div>
@@ -87,15 +116,21 @@ const Login = () => {
                 type="checkbox"
                 className="h-4 w-4 text-[#FF5200] focus:ring-[#FF5200] border-gray-300 rounded cursor-pointer"
               />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900 cursor-pointer">
+              <label
+                htmlFor="remember-me"
+                className="ml-2 block text-sm text-gray-900 cursor-pointer"
+              >
                 Remember me
               </label>
             </div>
 
             <div className="text-sm">
-              <a href="#" className="font-medium text-[#FF5200] hover:text-orange-500">
+              <Link
+                to="/forgot-password"
+                className="font-medium text-[#FF5200] hover:text-orange-500"
+              >
                 Forgot password?
-              </a>
+              </Link>
             </div>
           </div>
 

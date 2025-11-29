@@ -1,118 +1,283 @@
-import React, { useState, useEffect } from 'react';
-import { Package, Clock, ChevronRight, ShoppingBag, ArrowLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
-// 1. IMPORT MOTION
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from "react";
+import {
+  Package,
+  Clock,
+  ChevronRight,
+  ShoppingBag,
+  ArrowLeft,
+  RotateCcw,
+  XCircle,
+  Trash2,
+} from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { restaurants } from "../data/mockData";
+import { toast } from "sonner";
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
+  const [activeTab, setActiveTab] = useState("Active");
+  const navigate = useNavigate();
 
-  // --- ANIMATION VARIANTS ---
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { 
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
+  // --- LOAD ORDERS ---
+  const loadOrders = () => {
+    try {
+      const storedOrders = JSON.parse(localStorage.getItem("orders") || "[]");
+      setOrders(storedOrders);
+    } catch (error) {
+      setOrders([]);
     }
   };
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
-  };
-  // ---------------------------
-
-  // LOAD ORDERS FROM LOCAL STORAGE
   useEffect(() => {
-    const storedOrders = localStorage.getItem('orders');
-    if (storedOrders) {
-      setOrders(JSON.parse(storedOrders));
-    }
+    loadOrders();
+    window.addEventListener("storage", loadOrders);
+    window.addEventListener("focus", loadOrders);
+    return () => {
+      window.removeEventListener("storage", loadOrders);
+      window.removeEventListener("focus", loadOrders);
+    };
   }, []);
 
+  // --- ACTION HANDLERS ---
+
+  // 1. CANCEL SINGLE ORDER
+  const handleCancelOrder = (e, orderId) => {
+    e.stopPropagation();
+    if (window.confirm("Are you sure you want to cancel this order?")) {
+      const updatedOrders = orders.map((order) => {
+        if (order.id === orderId) {
+          return { ...order, status: "Cancelled" };
+        }
+        return order;
+      });
+      setOrders(updatedOrders);
+      localStorage.setItem("orders", JSON.stringify(updatedOrders));
+      toast.info("Order has been cancelled");
+    }
+  };
+
+  // 2. DELETE SINGLE ORDER FROM HISTORY
+  const handleDeleteOrder = (e, orderId) => {
+    e.stopPropagation();
+    if (window.confirm("Delete this order record permanently?")) {
+      const updatedOrders = orders.filter((o) => o.id !== orderId);
+      setOrders(updatedOrders);
+      localStorage.setItem("orders", JSON.stringify(updatedOrders));
+      toast.success("Order deleted");
+    }
+  };
+
+  // 3. CLEAR ENTIRE HISTORY (New Feature)
+  const handleClearHistory = () => {
+    if (
+      window.confirm(
+        "Are you sure you want to clear your entire order history? This cannot be undone."
+      )
+    ) {
+      // Keep only active orders (Not Delivered AND Not Cancelled)
+      const activeOnly = orders.filter(
+        (o) => o.status !== "Delivered" && o.status !== "Cancelled"
+      );
+
+      setOrders(activeOnly);
+      localStorage.setItem("orders", JSON.stringify(activeOnly));
+      toast.success("Order history cleared");
+    }
+  };
+
+  // Filter Logic
+  const activeOrders = orders.filter(
+    (o) => o.status !== "Delivered" && o.status !== "Cancelled"
+  );
+  const pastOrders = orders.filter(
+    (o) => o.status === "Delivered" || o.status === "Cancelled"
+  );
+
+  const displayedOrders = activeTab === "Active" ? activeOrders : pastOrders;
+
+  const getRestaurantImage = (name) => {
+    const found = restaurants.find((r) => r.name === name);
+    return found ? found.image : null;
+  };
+
+  const handleOrderClick = (orderId) => {
+    navigate(`/tracking/${encodeURIComponent(orderId)}`);
+  };
+
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="max-w-4xl mx-auto p-6 pb-24"
-    >
-      <div className="flex items-center gap-4 mb-8">
-        <Link to="/" className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors">
-          <ArrowLeft size={20} className="text-gray-600" />
-        </Link>
-        <h1 className="text-2xl font-extrabold text-gray-900">My Orders</h1>
-      </div>
-      
-      {orders.length === 0 ? (
-        // EMPTY STATE
-        <motion.div 
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-2xl border border-dashed border-gray-200"
-        >
-          <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mb-4">
-            <ShoppingBag size={40} className="text-orange-400" />
-          </div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">No orders yet</h2>
-          <p className="text-gray-500 mb-6 max-w-xs">
-            Looks like you haven't placed any orders yet. Hungry?
-          </p>
-          <Link to="/" className="bg-[#FF5200] text-white px-8 py-3 rounded-xl font-bold hover:bg-orange-600 transition-transform hover:scale-105 shadow-lg shadow-orange-200/50">
-            Start Ordering
-          </Link>
-        </motion.div>
-      ) : (
-        // ORDERS LIST
-        <motion.div 
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="space-y-4"
-        >
-          {orders.map((order) => (
-            <motion.div 
-              variants={itemVariants}
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
-              key={order.id} 
-              className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 group cursor-pointer"
+    <div className="max-w-3xl mx-auto p-4 md:p-8 min-h-screen pb-24">
+      {/* HEADER & TABS */}
+      <div className="sticky top-0 bg-gray-50 z-10 pb-4 pt-2">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Link
+              to="/"
+              className="p-2 bg-white border border-gray-200 rounded-full hover:bg-gray-100 transition-colors"
             >
-              
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600 group-hover:bg-[#FF5200] group-hover:text-white transition-colors">
-                  <Package size={24} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-gray-900">{order.restaurant}</h3>
-                    <span className="text-xs text-gray-400 font-mono bg-gray-50 px-2 py-0.5 rounded">{order.id}</span>
-                  </div>
-                  <p className="text-sm text-gray-500 line-clamp-1 mt-1">{order.items}</p>
-                  <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
-                    <Clock size={12} />
-                    <span>{order.date}</span>
-                  </div>
-                </div>
-              </div>
+              <ArrowLeft size={20} className="text-gray-600" />
+            </Link>
+            <h1 className="text-2xl font-extrabold text-gray-900">My Orders</h1>
+          </div>
 
-              <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto border-t md:border-none pt-4 md:pt-0">
-                <span className="font-bold text-gray-900">{order.price}</span>
-                <span className={`px-3 py-1 text-xs font-bold rounded-full flex items-center gap-1 ${
-                  order.status === 'Delivered' 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'bg-blue-50 text-blue-600'
-                }`}>
-                  <div className={`w-1.5 h-1.5 rounded-full ${order.status === 'Delivered' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
-                  {order.status}
-                </span>
-                <ChevronRight size={16} className="text-gray-400 hidden md:block group-hover:translate-x-1 transition-transform" />
-              </div>
+          {/* CLEAR HISTORY BUTTON - Only visible on History Tab if there are items */}
+          {activeTab === "History" && pastOrders.length > 0 && (
+            <button
+              onClick={handleClearHistory}
+              className="text-red-500 text-xs font-bold bg-red-50 hover:bg-red-100 px-3 py-2 rounded-lg transition-colors flex items-center gap-2"
+            >
+              <Trash2 size={14} /> Clear History
+            </button>
+          )}
+        </div>
 
-            </motion.div>
+        {/* Custom Tab Switcher */}
+        <div className="bg-gray-200 p-1 rounded-xl flex gap-1">
+          {["Active", "History"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${
+                activeTab === tab
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab}
+            </button>
           ))}
-        </motion.div>
-      )}
-    </motion.div>
+        </div>
+      </div>
+
+      {/* CONTENT AREA */}
+      <div className="mt-4 space-y-4">
+        <AnimatePresence mode="popLayout">
+          {displayedOrders.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center justify-center py-20 text-center"
+            >
+              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <ShoppingBag size={32} className="text-gray-400" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">
+                No {activeTab.toLowerCase()} orders
+              </h3>
+              <p className="text-gray-500 text-sm mb-6">
+                {activeTab === "Active"
+                  ? "Hungry? Let's find you something delicious."
+                  : "History is clean."}
+              </p>
+              <Link
+                to="/"
+                className="bg-[#FF5200] text-white px-6 py-2.5 rounded-full text-sm font-bold hover:bg-orange-600"
+              >
+                Browse Restaurants
+              </Link>
+            </motion.div>
+          ) : (
+            displayedOrders.map((order, index) => (
+              <motion.div
+                layout
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ delay: index * 0.05 }}
+                key={order.id}
+                onClick={() => handleOrderClick(order.id)}
+                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-all cursor-pointer group relative overflow-hidden"
+              >
+                <div className="flex gap-4">
+                  {/* Restaurant Image */}
+                  <div className="w-20 h-20 bg-gray-100 rounded-xl overflow-hidden shrink-0">
+                    <img
+                      src={
+                        getRestaurantImage(order.restaurant) ||
+                        "https://images.unsplash.com/photo-1546069901-ba9599a7e63c"
+                      }
+                      alt={order.restaurant}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                  </div>
+
+                  <div className="flex-1 flex flex-col justify-center">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-bold text-gray-900 text-lg leading-tight">
+                          {order.restaurant}
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-1 line-clamp-1">
+                          {order.items}
+                        </p>
+                      </div>
+                      <span className="font-bold text-gray-900">
+                        {order.price}
+                      </span>
+                    </div>
+
+                    <div className="mt-auto pt-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs font-medium">
+                        {/* Status Badge */}
+                        <span
+                          className={`px-2 py-1 rounded text-[10px] uppercase tracking-wider ${
+                            order.status === "Delivered"
+                              ? "bg-green-100 text-green-700"
+                              : order.status === "Cancelled"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-blue-50 text-blue-600"
+                          }`}
+                        >
+                          {order.status}
+                        </span>
+                        <span className="text-gray-400 flex items-center gap-1">
+                          <Clock size={10} /> {order.date}
+                        </span>
+                      </div>
+
+                      {/* ACTION BUTTONS */}
+                      <div className="flex items-center gap-3">
+                        {/* ACTIVE TAB ACTIONS */}
+                        {activeTab === "Active" && (
+                          <>
+                            <button
+                              onClick={(e) => handleCancelOrder(e, order.id)}
+                              className="text-red-500 text-xs font-bold hover:bg-red-50 px-2 py-1 rounded transition-colors flex items-center gap-1"
+                            >
+                              <XCircle size={14} /> Cancel
+                            </button>
+                            <div className="flex items-center gap-1 text-[#FF5200] text-xs font-bold pl-2 border-l border-gray-100">
+                              Track <ChevronRight size={14} />
+                            </div>
+                          </>
+                        )}
+
+                        {/* HISTORY TAB ACTIONS */}
+                        {activeTab === "History" && (
+                          <>
+                            <button
+                              onClick={(e) => handleDeleteOrder(e, order.id)}
+                              className="text-gray-400 text-xs font-bold hover:text-red-500 transition-colors flex items-center gap-1 mr-2"
+                              title="Delete from history"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                            <button className="text-[#FF5200] text-xs font-bold flex items-center gap-1 hover:underline">
+                              <RotateCcw size={12} /> Reorder
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
   );
 };
 
