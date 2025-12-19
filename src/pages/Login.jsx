@@ -1,48 +1,42 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, ArrowRight, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login, googleSignIn } = useAuth();
+
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
 
-    // 1. Get my "Database"
-    const existingUsers = JSON.parse(localStorage.getItem("usersDB") || "[]");
-
-    // 2. Find the user with matching email AND password
-    const validUser = existingUsers.find(
-      (user) =>
-        user.email.toLowerCase() === email.toLowerCase() &&
-        user.password === password
-    );
-
-    if (validUser) {
-      // SUCCESS: User found in database!
-      // We extract the REAL fullName they signed up with.
-
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          fullName: validUser.fullName,
-          email: validUser.email,
-        })
-      );
-
-      // Redirect to Home
-      // toast.success(`Welcome back, ${validUser.fullName}!`);
+    try {
+      setLoading(true);
+      await login(email, password);
       navigate("/");
-      window.location.reload();
-    } else {
-      // FAILURE: No match found.
-      // Strict Access: We do NOT create a temporary profile. We block them.
-      alert(
-        "Invalid email or password. Please Sign Up if you don't have an account."
-      );
+    } catch (err) {
+      console.error(err);
+      setError("Failed to log in. Please check your credentials.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setError("");
+      await googleSignIn();
+      navigate("/");
+    } catch (err) {
+      console.error(err);
+      setError("Failed to sign in with Google.");
     }
   };
 
@@ -62,6 +56,37 @@ const Login = () => {
               Sign up for free
             </Link>
           </p>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 text-red-500 p-3 rounded-lg text-sm flex items-center justify-center">
+            <AlertCircle className="w-4 h-4 mr-2" />
+            {error}
+          </div>
+        )}
+
+        <button
+          onClick={handleGoogleSignIn}
+          type="button"
+          className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all font-outfit"
+        >
+          <img
+            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+            alt="Google logo"
+            className="w-5 h-5 mr-3"
+          />
+          Sign in with Google
+        </button>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">
+              Or continue with
+            </span>
+          </div>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -136,10 +161,11 @@ const Login = () => {
 
           <button
             type="submit"
-            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-full text-white bg-[#FF5200] hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF5200] transition-all transform hover:scale-[1.02] shadow-lg"
+            disabled={loading}
+            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-full text-white bg-[#FF5200] hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF5200] transition-all transform hover:scale-[1.02] shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            Sign in
-            <ArrowRight className="ml-2 h-4 w-4" />
+            {loading ? "Signing in..." : "Sign in"}
+            {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
           </button>
         </form>
       </div>

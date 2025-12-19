@@ -8,14 +8,18 @@ import {
   Eye,
   EyeOff,
   CheckCircle,
+  AlertCircle,
 } from "lucide-react";
-// import { toast } from "sonner"; // Uncomment if you are using Sonner for alerts
+import { useAuth } from "../context/AuthContext";
 
 const Signup = () => {
   const navigate = useNavigate();
+  const { signup, googleSignIn } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -28,52 +32,40 @@ const Signup = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
 
     // 1. Validation
     if (formData.password !== formData.confirmPassword) {
-      alert("Error: Passwords do not match!");
-      return;
+      return setError("Passwords do not match!");
     }
 
-    // 2. Load existing users "Database"
-    const existingUsers = JSON.parse(localStorage.getItem("usersDB") || "[]");
-
-    // 3. Check if email already exists
-    const userExists = existingUsers.find(
-      (u) => u.email.toLowerCase() === formData.email.toLowerCase()
-    );
-    if (userExists) {
-      alert("This email is already registered. Please Login.");
-      return;
+    if (formData.password.length < 6) {
+      return setError("Password must be at least 6 characters.");
     }
 
-    // 4. Create new user object
-    const newUser = {
-      fullName: formData.fullName,
-      email: formData.email,
-      password: formData.password, // In a real app, never save passwords like this!
-    };
+    try {
+      setLoading(true);
+      await signup(formData.email, formData.password, formData.fullName);
+      navigate("/");
+    } catch (err) {
+      console.error(err);
+      setError("Failed to create an account. Email might be in use.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    // 5. Save to "Database"
-    existingUsers.push(newUser);
-    localStorage.setItem("usersDB", JSON.stringify(existingUsers));
-
-    // 6. Set Active Session (Auto-login after signup)
-    // We only save the necessary info for the session, not the password
-    localStorage.setItem(
-      "user",
-      JSON.stringify({
-        fullName: newUser.fullName,
-        email: newUser.email,
-      })
-    );
-
-    // Redirect to Home
-    // toast.success("Account created successfully!");
-    navigate("/");
-    window.location.reload();
+  const handleGoogleSignIn = async () => {
+    try {
+      setError("");
+      await googleSignIn();
+      navigate("/");
+    } catch (err) {
+      console.error(err);
+      setError("Failed to sign in with Google.");
+    }
   };
 
   return (
@@ -92,6 +84,37 @@ const Signup = () => {
               Log in
             </Link>
           </p>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 text-red-500 p-3 rounded-lg text-sm flex items-center justify-center">
+            <AlertCircle className="w-4 h-4 mr-2" />
+            {error}
+          </div>
+        )}
+
+        <button
+          onClick={handleGoogleSignIn}
+          type="button"
+          className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all font-outfit"
+        >
+          <img
+            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+            alt="Google logo"
+            className="w-5 h-5 mr-3"
+          />
+          Sign up with Google
+        </button>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">
+              Or continue with
+            </span>
+          </div>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -181,10 +204,11 @@ const Signup = () => {
 
           <button
             type="submit"
-            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-full text-white bg-[#FF5200] hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF5200] transition-all transform hover:scale-[1.02] shadow-lg"
+            disabled={loading}
+            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-full text-white bg-[#FF5200] hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF5200] transition-all transform hover:scale-[1.02] shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            Create Account
-            <ArrowRight className="ml-2 h-4 w-4" />
+            {loading ? "Creating Account..." : "Create Account"}
+            {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
           </button>
         </form>
       </div>
