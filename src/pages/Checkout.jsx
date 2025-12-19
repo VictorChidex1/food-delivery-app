@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { restaurants } from "../data/mockData";
+import useRestaurants from "../hooks/useRestaurants";
+import { db } from "../firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import {
   MapPin,
   CreditCard,
@@ -45,6 +47,7 @@ const LocationMarker = ({ position, setPosition }) => {
 
 const Checkout = () => {
   const navigate = useNavigate();
+  const { restaurants, loading } = useRestaurants();
   const [cart, setCart] = useState({});
   const [restaurant, setRestaurant] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("card");
@@ -77,6 +80,9 @@ const Checkout = () => {
 
   // --- 1. ROBUST INITIAL LOAD (Fixes Ghost Cart) ---
   useEffect(() => {
+    // Wait for restaurants to load
+    if (loading || restaurants.length === 0) return;
+
     const storedUser = localStorage.getItem("user");
     if (storedUser) setUser(JSON.parse(storedUser));
 
@@ -88,6 +94,8 @@ const Checkout = () => {
       const firstItemId = parseInt(cartKeys[0]);
 
       // Find restaurant that owns this item
+      // We check if the restaurant ID matches or if the item is in its menu
+      // Note: Previous logic checked if item ID is in menu.
       const foundRest = restaurants.find((r) =>
         r.menu?.some((m) => m.id === firstItemId)
       );
@@ -105,7 +113,7 @@ const Checkout = () => {
         window.dispatchEvent(new Event("storage"));
       }
     }
-  }, []);
+  }, [loading, restaurants]);
 
   const handleUseCurrentLocation = () => {
     if (navigator.geolocation) {
@@ -133,8 +141,20 @@ const Checkout = () => {
   const total = subtotal + DELIVERY_FEE + SERVICE_FEE;
 
   // --- 2. SAFE PROCESS ORDER (Prevents Crashing) ---
-  const processOrder = (reference) => {
+  const processOrder = async (reference) => {
     if (!restaurant) return;
+
+    // Ensure we have a user ID (even if not logged in, though we enforce login for payment, verify this)
+    // If user is guest, we might skip or require login earlier.
+    // The handlePayWithPaystack checks for user.email.
+    // For now, let's assume currentUser is required for saving to Firestore
+    // or we store as guest if we want. But the requirement implies fullstack implies user accounts.
+    // We'll use the user object from state (which is currently loaded from localStorage,
+    // but we should prefer useAuth if possible, but for consistency with existing code's
+    // user check, we'll keep using the 'user' state variable which seems to be the auth user).
+
+    // BETTER: Use the actual auth user from context if we had it, but let's stick to the 'user' state
+    // which seems to reflect the logged in user correctly.
 
     try {
       // SAFE MAPPING: Check if item exists before accessing .name
@@ -148,22 +168,34 @@ const Checkout = () => {
 
       const newOrderRef = `#FD-${Math.floor(100000 + Math.random() * 900000)}`;
 
-      const newOrder = {
-        id: newOrderRef,
+      // Firestore Order Object
+      const orderData = {
+        orderId: newOrderRef, // Display ID
+        userId: user?.uid || user?.id || "guest", // Fallback
+        userEmail: user?.email,
         restaurant: restaurant.name,
+        restaurantId: restaurant.id, // Good to store ID
         items: itemsSummary,
-        price: `₦${total.toLocaleString()}`,
-        status: "Paid",
+        cartItems: cart, // Store the raw cart for structured data if needed
+        price: total, // Store number
+        displayPrice: `₦${total.toLocaleString()}`,
+        status: "Paid", // Or 'Pending' if Pay on Delivery
+        paymentMethod: paymentMethod,
         paymentRef: reference,
-        date: new Date().toLocaleDateString(),
         deliveryAddress: address,
-        timestamp: Date.now(),
+        date: new Date().toLocaleDateString(),
+        createdAt: serverTimestamp(), // Use server timestamp
       };
 
-      // Save to Local Storage
-      const existingOrders = JSON.parse(localStorage.getItem("orders") || "[]");
-      const updatedOrders = [newOrder, ...existingOrders];
-      localStorage.setItem("orders", JSON.stringify(updatedOrders));
+      // Save to Firestore
+      const docRef = await addDoc(collection(db, "orders"), orderData);
+
+      // Save to Local Storage (Legacy Support / Backup)
+      // We can keep it or remove it. Let's keep it for Orders.jsx until that is refactored.
+      // But actually, we are refactoring Orders.jsx next, so we don't strictly *need* it,
+      // but it doesn't hurt to keep as a cache or for immediate UI updates if we weren't using real-time listeners.
+      // However, if we use real-time listeners in Orders.jsx, we don't need to manually update local storage.
+      // Let's REMOVE local storage saving to force reliance on Firestore.
 
       // Update UI
       setLastOrderRef(newOrderRef);
@@ -233,6 +265,14 @@ const Checkout = () => {
   };
 
   // --- EMPTY STATE HANDLING ---
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-10 h-10 border-4 border-gray-200 border-t-[#FF5200] rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   if ((!restaurant || Object.keys(cart).length === 0) && !showSuccessModal) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">

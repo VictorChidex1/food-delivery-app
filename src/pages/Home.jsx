@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { restaurants } from "../data/mockData";
+import useRestaurants from "../hooks/useRestaurants";
 import {
   Star,
   Flame,
@@ -30,8 +30,8 @@ const itemVariants = {
 };
 
 const Home = () => {
+  const { restaurants, loading: isLoading } = useRestaurants();
   const [favorites, setFavorites] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   // 2. PAGINATION STATE
   const [currentPage, setCurrentPage] = useState(1);
@@ -43,12 +43,6 @@ const Home = () => {
   useEffect(() => {
     const storedFavs = JSON.parse(localStorage.getItem("favorites") || "[]");
     setFavorites(storedFavs);
-
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
   }, []);
 
   // 3. RESET PAGE ON FILTER CHANGE
@@ -61,11 +55,13 @@ const Home = () => {
     e.stopPropagation();
 
     let updatedFavs;
-    if (favorites.includes(id)) {
-      updatedFavs = favorites.filter((favId) => favId !== id);
+    // Ensure both are strings or numbers for comparison
+    const favId = id.toString();
+    if (favorites.includes(favId)) {
+      updatedFavs = favorites.filter((fid) => fid !== favId);
       toast.info(`${name} removed from favorites`);
     } else {
-      updatedFavs = [...favorites, id];
+      updatedFavs = [...favorites, favId];
       toast.success(`${name} saved to favorites`);
     }
 
@@ -268,7 +264,7 @@ const Home = () => {
             >
               {/* USE currentItems instead of filteredRestaurants */}
               {currentItems.map((restaurant) => {
-                const isFavorite = favorites.includes(restaurant.id);
+                const isFavorite = favorites.includes(restaurant.id.toString());
                 return (
                   <Link
                     to={`/restaurant/${restaurant.id}`}

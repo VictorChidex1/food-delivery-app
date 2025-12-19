@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { restaurants } from "../data/mockData";
+import useRestaurants from "../hooks/useRestaurants";
 import {
   Star,
   Clock,
@@ -102,6 +102,7 @@ const Separator = React.forwardRef(
 const Restaurant = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { restaurants, loading } = useRestaurants();
   const [restaurant, setRestaurant] = useState(null);
   const [cart, setCart] = useState({});
   const [user, setUser] = useState(null);
@@ -125,9 +126,11 @@ const Restaurant = () => {
   }, []);
 
   useEffect(() => {
-    const found = restaurants.find((r) => r.id === parseInt(id));
-    setRestaurant(found);
-  }, [id]);
+    if (restaurants.length > 0) {
+      const found = restaurants.find((r) => r.id.toString() === id);
+      setRestaurant(found);
+    }
+  }, [id, restaurants]);
 
   const addToCart = (itemId) => {
     if (!user) {

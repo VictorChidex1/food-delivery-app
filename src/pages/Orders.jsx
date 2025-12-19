@@ -11,78 +11,116 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { restaurants } from "../data/mockData";
+import useRestaurants from "../hooks/useRestaurants";
+import { useAuth } from "../context/AuthContext";
+import { db } from "../firebase";
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  doc,
+  updateDoc,
+  deleteDoc,
+} from "firebase/firestore";
 import { toast } from "sonner";
 
 const Orders = () => {
+  const { restaurants } = useRestaurants();
+  const { currentUser } = useAuth();
   const [orders, setOrders] = useState([]);
   const [activeTab, setActiveTab] = useState("Active");
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // --- LOAD ORDERS ---
-  const loadOrders = () => {
-    try {
-      const storedOrders = JSON.parse(localStorage.getItem("orders") || "[]");
-      setOrders(storedOrders);
-    } catch (error) {
-      setOrders([]);
-    }
-  };
-
+  // --- LOAD ORDERS FROM FIRESTORE ---
   useEffect(() => {
-    loadOrders();
-    window.addEventListener("storage", loadOrders);
-    window.addEventListener("focus", loadOrders);
-    return () => {
-      window.removeEventListener("storage", loadOrders);
-      window.removeEventListener("focus", loadOrders);
-    };
-  }, []);
+    if (!currentUser) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
+
+    // Query orders for current user
+    const q = query(
+      collection(db, "orders"),
+      where("userId", "==", currentUser.uid),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const userOrders = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setOrders(userOrders);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error fetching orders:", error);
+        // Fallback for index errors or permission issues
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [currentUser]);
 
   // --- ACTION HANDLERS ---
 
   // 1. CANCEL SINGLE ORDER
-  const handleCancelOrder = (e, orderId) => {
+  const handleCancelOrder = async (e, orderId) => {
     e.stopPropagation();
     if (window.confirm("Are you sure you want to cancel this order?")) {
-      const updatedOrders = orders.map((order) => {
-        if (order.id === orderId) {
-          return { ...order, status: "Cancelled" };
-        }
-        return order;
-      });
-      setOrders(updatedOrders);
-      localStorage.setItem("orders", JSON.stringify(updatedOrders));
-      toast.info("Order has been cancelled");
+      try {
+        const orderRef = doc(db, "orders", orderId);
+        await updateDoc(orderRef, { status: "Cancelled" });
+        toast.info("Order has been cancelled");
+      } catch (error) {
+        console.error("Error cancelling order:", error);
+        toast.error("Failed to cancel order");
+      }
     }
   };
 
   // 2. DELETE SINGLE ORDER FROM HISTORY
-  const handleDeleteOrder = (e, orderId) => {
+  const handleDeleteOrder = async (e, orderId) => {
     e.stopPropagation();
     if (window.confirm("Delete this order record permanently?")) {
-      const updatedOrders = orders.filter((o) => o.id !== orderId);
-      setOrders(updatedOrders);
-      localStorage.setItem("orders", JSON.stringify(updatedOrders));
-      toast.success("Order deleted");
+      try {
+        await deleteDoc(doc(db, "orders", orderId));
+        toast.success("Order deleted");
+      } catch (error) {
+        console.error("Error deleting order:", error);
+        toast.error("Failed to delete order");
+      }
     }
   };
 
-  // 3. CLEAR ENTIRE HISTORY (New Feature)
-  const handleClearHistory = () => {
+  // 3. CLEAR ENTIRE HISTORY
+  const handleClearHistory = async () => {
     if (
       window.confirm(
         "Are you sure you want to clear your entire order history? This cannot be undone."
       )
     ) {
-      // Keep only active orders (Not Delivered AND Not Cancelled)
-      const activeOnly = orders.filter(
-        (o) => o.status !== "Delivered" && o.status !== "Cancelled"
+      const pastOrders = orders.filter(
+        (o) => o.status === "Delivered" || o.status === "Cancelled"
       );
 
-      setOrders(activeOnly);
-      localStorage.setItem("orders", JSON.stringify(activeOnly));
-      toast.success("Order history cleared");
+      try {
+        const deletePromises = pastOrders.map((order) =>
+          deleteDoc(doc(db, "orders", order.id))
+        );
+        await Promise.all(deletePromises);
+        toast.success("Order history cleared");
+      } catch (error) {
+        console.error("Error clearing history:", error);
+        toast.error("Failed to clear history");
+      }
     }
   };
 
@@ -102,7 +140,11 @@ const Orders = () => {
   };
 
   const handleOrderClick = (orderId) => {
-    navigate(`/tracking/${encodeURIComponent(orderId)}`);
+    // We used orderId (document ID) for saving, but displayed orderId (ref) in UI
+    // The clickable route should probably use the document ID to easily fetch it in tracking
+    // But earlier I saved a display ID 'orderId' like #FD-123.
+    // Let's use the document ID for the route to be safe and consistent.
+    navigate(`/tracking/${orderId}`);
   };
 
   return (

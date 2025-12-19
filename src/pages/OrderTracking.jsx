@@ -14,6 +14,8 @@ import { Link, useParams } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import { db } from "../firebase";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 
 // IMPORT THE LOCAL RIDER IMAGE
 import riderImage from "../assets/images/rider.webp";
@@ -30,6 +32,7 @@ let DefaultIcon = L.icon({
 L.Marker.prototype.options.icon = DefaultIcon;
 
 const OrderTracking = () => {
+  // --- FIRESTORE INTEGRATION ---
   const { id } = useParams();
   const [currentStep, setCurrentStep] = useState(1);
   const [orderData, setOrderData] = useState(null);
@@ -39,42 +42,70 @@ const OrderTracking = () => {
   const RIDER_PHONE = "+2348012345678";
 
   useEffect(() => {
-    const decodedId = decodeURIComponent(id);
-    const storedOrders = JSON.parse(localStorage.getItem("orders") || "[]");
-    const foundOrder = storedOrders.find((o) => o.id === decodedId);
+    if (!id) return;
 
-    if (foundOrder) {
-      setOrderData(foundOrder);
-      if (foundOrder.status === "Delivered") setCurrentStep(4);
-    }
-    setLoading(false);
+    const orderRef = doc(db, "orders", id);
+    const unsubscribe = onSnapshot(
+      orderRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = { id: docSnap.id, ...docSnap.data() };
+          setOrderData(data);
+
+          // Map status to steps
+          let step = 1;
+          if (data.status === "Preparing") step = 2;
+          if (data.status === "On the Way") step = 3;
+          if (data.status === "Delivered") step = 4;
+          if (data.status === "Cancelled") step = 0; // Handle cancelled?
+
+          setCurrentStep(step);
+        } else {
+          console.log("No such order!");
+        }
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error fetching order:", error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
   }, [id]);
 
-  // --- UPDATED SIMULATION LOGIC ---
+  // --- SIMULATION LOGIC (Updates Firestore) ---
+  // In a real app, this would happen on the backend or rider app
   useEffect(() => {
-    if (orderData && orderData.status !== "Delivered") {
-      const timer = setInterval(() => {
-        setCurrentStep((prev) => {
-          // If we reach the final step (4), update LocalStorage to "Delivered"
-          if (prev === 3) {
-            const storedOrders = JSON.parse(
-              localStorage.getItem("orders") || "[]"
-            );
-            const updatedOrders = storedOrders.map((o) =>
-              o.id === orderData.id ? { ...o, status: "Delivered" } : o
-            );
-            localStorage.setItem("orders", JSON.stringify(updatedOrders));
+    if (
+      !orderData ||
+      orderData.status === "Delivered" ||
+      orderData.status === "Cancelled"
+    )
+      return;
 
-            // Update local state to reflect change immediately
-            setOrderData((prevData) => ({ ...prevData, status: "Delivered" }));
-            return 4;
-          }
-          return prev < 4 ? prev + 1 : prev;
-        });
-      }, 10000); // <--- UPDATED: NOW 10 SECONDS (10000ms) per step
-      return () => clearInterval(timer);
-    }
-  }, [orderData]);
+    const timer = setInterval(async () => {
+      const nextStatusMap = {
+        Paid: "Preparing",
+        Preparing: "On the Way",
+        "On the Way": "Delivered",
+      };
+
+      const currentStatus = orderData.status;
+      const nextStatus = nextStatusMap[currentStatus];
+
+      if (nextStatus) {
+        try {
+          const orderRef = doc(db, "orders", id);
+          await updateDoc(orderRef, { status: nextStatus });
+        } catch (err) {
+          console.error("Simulation update failed", err);
+        }
+      }
+    }, 10000); // 10 seconds per step
+
+    return () => clearInterval(timer);
+  }, [orderData, id]);
   // --------------------------------
 
   const steps = [
