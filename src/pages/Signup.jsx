@@ -32,13 +32,6 @@ const Signup = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Redirect if user is already logged in
-  useEffect(() => {
-    if (!loading && currentUser) {
-      navigate("/");
-    }
-  }, [currentUser, loading, navigate]);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -55,7 +48,7 @@ const Signup = () => {
     try {
       setLoading(true);
       await signup(formData.email, formData.password, formData.fullName);
-      // user state change will trigger redirect in useEffect
+      navigate("/");
     } catch (err) {
       console.error(err);
       setError("Failed to create an account. Email might be in use.");
@@ -67,7 +60,7 @@ const Signup = () => {
     try {
       setError("");
       await googleSignIn();
-      // user state change will trigger redirect in useEffect
+      navigate("/");
     } catch (err) {
       console.error(err);
       setError("Failed to sign in with Google.");

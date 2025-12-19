@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, ArrowRight, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -13,13 +13,6 @@ const Login = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Redirect if user is already logged in
-  useEffect(() => {
-    if (!loading && currentUser) {
-      navigate("/");
-    }
-  }, [currentUser, loading, navigate]);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -27,7 +20,7 @@ const Login = () => {
     try {
       setLoading(true);
       await login(email, password);
-      // user state change will trigger redirect in useEffect
+      navigate("/");
     } catch (err) {
       console.error(err);
       setError("Failed to log in. Please check your credentials.");
@@ -39,7 +32,7 @@ const Login = () => {
     try {
       setError("");
       await googleSignIn();
-      // user state change will trigger redirect in useEffect
+      navigate("/");
     } catch (err) {
       console.error(err);
       setError("Failed to sign in with Google.");
