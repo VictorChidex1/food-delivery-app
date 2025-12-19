@@ -58,15 +58,21 @@ export const AuthProvider = ({ children }) => {
     const user = result.user;
 
     // Check if user exists in Firestore, if not create them
-    const userDoc = await getDoc(doc(db, "users", user.uid));
-    if (!userDoc.exists()) {
-      await setDoc(doc(db, "users", user.uid), {
-        uid: user.uid,
-        email: user.email,
-        fullName: user.displayName,
-        createdAt: new Date().toISOString(),
-        role: "customer",
-      });
+    try {
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      if (!userDoc.exists()) {
+        await setDoc(doc(db, "users", user.uid), {
+          uid: user.uid,
+          email: user.email,
+          fullName: user.displayName,
+          createdAt: new Date().toISOString(),
+          role: "customer",
+        });
+      }
+    } catch (error) {
+      console.error("Firestore Error (non-critical):", error);
+      // We do NOT re-throw here. We allow the user to be "logged in" even if their profile doc failed.
+      // This prevents the "Redirected but not logged in" state.
     }
 
     return user;
