@@ -22,15 +22,9 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Helper: Update Profile
-  const updateUserProfile = async (user, profileData) => {
-    await updateProfile(user, profileData);
-    // Refresh user state
-    setCurrentUser({ ...user, ...profileData });
-  };
-
-  // Sign up with Email & Password
+  // 1. Sign up with Email & Password
   const signup = async (email, password, fullName) => {
+    // 1a. Create User in Auth
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       email,
@@ -38,10 +32,10 @@ export const AuthProvider = ({ children }) => {
     );
     const user = userCredential.user;
 
-    // Use helper to update profile
-    await updateUserProfile(user, { displayName: fullName });
+    // 1b. Update Display Name
+    await updateProfile(user, { displayName: fullName });
 
-    // Create user document in Firestore
+    // 1c. Create User Doc (Non-blocking)
     try {
       await setDoc(doc(db, "users", user.uid), {
         uid: user.uid,
@@ -50,95 +44,66 @@ export const AuthProvider = ({ children }) => {
         createdAt: new Date().toISOString(),
         role: "customer",
       });
-    } catch (error) {
-      console.error("Error creating user document:", error);
+    } catch (e) {
+      console.error("Error saving user profile:", e);
     }
 
-    setCurrentUser(user);
     return user;
   };
 
-  // Login with Email & Password
-  const login = async (email, password) => {
-    const result = await signInWithEmailAndPassword(auth, email, password);
-    setCurrentUser(result.user);
-    return result;
+  // 2. Login with Email & Password
+  const login = (email, password) => {
+    return signInWithEmailAndPassword(auth, email, password);
   };
 
-  // Login with Google
+  // 3. Login with Google
   const googleSignIn = async () => {
     const provider = new GoogleAuthProvider();
+    // Force account selection
     provider.setCustomParameters({ prompt: "select_account" });
 
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+
+    // Check/Create User Doc
     try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
 
-      // Check if user exists in Firestore, if not create them
-      try {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (!userDoc.exists()) {
-          await setDoc(doc(db, "users", user.uid), {
-            uid: user.uid,
-            email: user.email,
-            fullName: user.displayName,
-            createdAt: new Date().toISOString(),
-            role: "customer",
-          });
-        }
-      } catch (dbError) {
-        console.error("Firestore Error (non-critical):", dbError);
+      if (!userSnap.exists()) {
+        await setDoc(userRef, {
+          uid: user.uid,
+          email: user.email,
+          fullName: user.displayName,
+          createdAt: new Date().toISOString(),
+          role: "customer",
+        });
       }
-
-      // MANUAL STATE UPDATE:
-      setCurrentUser(user);
-      return user;
-    } catch (error) {
-      console.error("Google Sign In Error:", error);
-      throw error;
-    } finally {
-      setLoading(false);
+    } catch (e) {
+      console.error("Error checking user profile:", e);
     }
+
+    return user;
   };
 
-  // Logout
+  // 4. Logout
   const logout = () => {
-    setLoading(true);
-    return signOut(auth).then(() => {
-      setCurrentUser(null);
-      setLoading(false);
-    });
+    return signOut(auth);
   };
 
-  // Reset Password
+  // 5. Reset Password
   const resetPassword = (email) => {
     return sendPasswordResetEmail(auth, email);
   };
 
+  // 6. SINGLE SOURCE OF TRUTH: onAuthStateChanged
   useEffect(() => {
-    console.log("AuthContext: Setting up onAuthStateChanged listener...");
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log(
-        "AuthContext: Auth State Changed:",
-        user ? `User ${user.uid} logged in` : "No user logged in"
-      );
-      if (user) {
-        try {
-          const token = await user.getIdToken();
-          console.log("AuthContext: User Token:", token);
-          console.log("AuthContext: User Metadata:", user.metadata);
-        } catch (e) {
-          console.error("AuthContext: Error fetching token", e);
-        }
-      }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       setLoading(false);
     });
 
-    return () => {
-      console.log("AuthContext: Cleaning up listener");
-      unsubscribe();
-    };
+    return unsubscribe;
   }, []);
 
   const value = {
@@ -148,7 +113,6 @@ export const AuthProvider = ({ children }) => {
     googleSignIn,
     logout,
     resetPassword,
-    updateUserProfile,
   };
 
   return (
