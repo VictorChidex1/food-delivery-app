@@ -43,12 +43,15 @@ export const AuthProvider = ({ children }) => {
       role: "customer", // Default role
     });
 
+    setCurrentUser(user);
     return user;
   };
 
   // Login with Email & Password
-  const login = (email, password) => {
-    return signInWithEmailAndPassword(auth, email, password);
+  const login = async (email, password) => {
+    const result = await signInWithEmailAndPassword(auth, email, password);
+    setCurrentUser(result.user);
+    return result;
   };
 
   // Login with Google
@@ -75,6 +78,11 @@ export const AuthProvider = ({ children }) => {
       // This prevents the "Redirected but not logged in" state.
     }
 
+    // MANUAL STATE UPDATE:
+    // Ensure the UI updates immediately, even if the onAuthStateChanged listener is slow
+    setCurrentUser(user);
+    setLoading(false);
+
     return user;
   };
 
@@ -89,12 +97,29 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    console.log("AuthContext: Setting up onAuthStateChanged listener...");
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      console.log(
+        "AuthContext: Auth State Changed:",
+        user ? `User ${user.uid} logged in` : "No user logged in"
+      );
+      if (user) {
+        try {
+          const token = await user.getIdToken();
+          console.log("AuthContext: User Token:", token);
+          console.log("AuthContext: User Metadata:", user.metadata);
+        } catch (e) {
+          console.error("AuthContext: Error fetching token", e);
+        }
+      }
       setCurrentUser(user);
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      console.log("AuthContext: Cleaning up listener");
+      unsubscribe();
+    };
   }, []);
 
   const value = {
