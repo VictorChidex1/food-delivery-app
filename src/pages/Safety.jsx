@@ -11,7 +11,7 @@ import Footer from "../components/Footer";
 
 // 1. IMPORT THE HERO IMAGE
 // Make sure to save your downloaded image as 'safety-hero.jpg' in src/assets/images/
-import heroBg from "../assets/images/safety-hero.png";
+import heroBg from "../assets/images/safety-hero.webp";
 
 const Safety = () => {
   const safetyFeatures = [

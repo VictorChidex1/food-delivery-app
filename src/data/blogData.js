@@ -1,9 +1,9 @@
-import img1 from "../assets/images/jollof-article.png";
-import img2 from "../assets/images/suya-spot-article.png";
-import img3 from "../assets/images/rider-article.png";
-import img4 from "../assets/images/healthy-swallow-article.png";
-import img5 from "../assets/images/road-side-food-article.png";
-import img6 from "../assets/images/pepper-soup-article.png";
+import img1 from "../assets/images/jollof-article.webp";
+import img2 from "../assets/images/suya-spot-article.webp";
+import img3 from "../assets/images/rider-article.webp";
+import img4 from "../assets/images/healthy-swallow-article.webp";
+import img5 from "../assets/images/road-side-food-article.webp";
+import img6 from "../assets/images/pepper-soup-article.webp";
 
 export const blogPosts = [
   {

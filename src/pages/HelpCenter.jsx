@@ -15,7 +15,7 @@ import Footer from "../components/Footer";
 
 // 1. IMPORT THE HERO IMAGE
 // Make sure to save your downloaded image as 'help-hero.jpg' in this folder
-import heroBg from "../assets/images/help-hero.png";
+import heroBg from "../assets/images/help-hero.webp";
 
 const HelpCenter = () => {
   const [searchQuery, setSearchQuery] = useState("");

@@ -3,12 +3,12 @@ import { motion } from "framer-motion";
 import { Users, Target, Globe, Award, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import Footer from "../components/Footer";
-import img1 from "../assets/images/Agbaho-victor.png";
-import img2 from "../assets/images/Onyi.jpg";
-import img3 from "../assets/images/Minimi.jpg";
-import img4 from "../assets/images/about-story.png";
+import img1 from "../assets/images/Agbaho-victor.webp";
+import img2 from "../assets/images/Onyi.webp";
+import img3 from "../assets/images/Minimi.webp";
+import img4 from "../assets/images/about-story.webp";
 // 1. IMPORT THE HERO IMAGE
-import heroBg from "../assets/images/about-hero.png";
+import heroBg from "../assets/images/about-hero.webp";
 
 const About = () => {
   const stats = [

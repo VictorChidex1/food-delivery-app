@@ -11,7 +11,7 @@ const Login = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // 1. Get our "Database"
+    // 1. Get my "Database"
     const existingUsers = JSON.parse(localStorage.getItem("usersDB") || "[]");
 
     // 2. Find the user with matching email AND password
