@@ -14,7 +14,7 @@ import { useAuth } from "../context/AuthContext";
 
 const Signup = () => {
   const navigate = useNavigate();
-  const { signup, googleSignIn } = useAuth();
+  const { signup, googleSignIn, currentUser, loading: authLoading } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -32,6 +32,13 @@ const Signup = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (!loading && currentUser) {
+      navigate("/");
+    }
+  }, [currentUser, loading, navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -48,11 +55,10 @@ const Signup = () => {
     try {
       setLoading(true);
       await signup(formData.email, formData.password, formData.fullName);
-      navigate("/");
+      // user state change will trigger redirect in useEffect
     } catch (err) {
       console.error(err);
       setError("Failed to create an account. Email might be in use.");
-    } finally {
       setLoading(false);
     }
   };
@@ -61,7 +67,7 @@ const Signup = () => {
     try {
       setError("");
       await googleSignIn();
-      navigate("/");
+      // user state change will trigger redirect in useEffect
     } catch (err) {
       console.error(err);
       setError("Failed to sign in with Google.");

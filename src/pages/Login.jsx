@@ -1,17 +1,24 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, ArrowRight, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login, googleSignIn } = useAuth();
+  const { login, googleSignIn, currentUser, loading: authLoading } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (!loading && currentUser) {
+      navigate("/");
+    }
+  }, [currentUser, loading, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,11 +27,10 @@ const Login = () => {
     try {
       setLoading(true);
       await login(email, password);
-      navigate("/");
+      // user state change will trigger redirect in useEffect
     } catch (err) {
       console.error(err);
       setError("Failed to log in. Please check your credentials.");
-    } finally {
       setLoading(false);
     }
   };
@@ -33,7 +39,7 @@ const Login = () => {
     try {
       setError("");
       await googleSignIn();
-      navigate("/");
+      // user state change will trigger redirect in useEffect
     } catch (err) {
       console.error(err);
       setError("Failed to sign in with Google.");
