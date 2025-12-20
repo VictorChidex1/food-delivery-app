@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -8,9 +9,10 @@ import {
   signInWithPopup,
   sendPasswordResetEmail,
   updateProfile,
+  deleteUser,
 } from "firebase/auth";
 import { auth, db } from "../firebase";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, deleteDoc } from "firebase/firestore";
 
 const AuthContext = createContext();
 
@@ -107,6 +109,24 @@ export const AuthProvider = ({ children }) => {
     setCurrentUser({ ...user, ...profileData });
   };
 
+  // 7. Delete Account
+  const deleteAccount = async () => {
+    if (!currentUser) return;
+
+    try {
+      // 1. Delete Firestore Document
+      await deleteDoc(doc(db, "users", currentUser.uid));
+
+      // 2. Delete Auth User
+      await deleteUser(currentUser);
+
+      setCurrentUser(null);
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      throw error;
+    }
+  };
+
   // 7. GLOBAL AUTH OBSERVER
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -125,6 +145,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     resetPassword,
     updateUserProfile,
+    deleteAccount,
   };
 
   return (
