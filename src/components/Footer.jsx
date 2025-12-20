@@ -1,6 +1,7 @@
 import React from "react";
 import { Facebook, Twitter, Instagram } from "lucide-react";
 import { Link } from "react-router-dom";
+import Logo from "./Logo";
 
 const Footer = () => {
   return (
@@ -10,9 +11,7 @@ const Footer = () => {
           {/* Brand Column */}
           <div className="col-span-1 md:col-span-1">
             <div className="mb-4">
-              <h2 className="text-2xl font-extrabold tracking-tight">
-                Food<span className="text-[#FF5200]">Flow</span>
-              </h2>
+              <Logo textColor="text-white" />
             </div>
             <p className="text-gray-400 text-sm leading-relaxed">
               Delivering authentic Naija flavors to your doorstep. Fast, fresh,
