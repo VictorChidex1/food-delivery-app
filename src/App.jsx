@@ -5,6 +5,8 @@ import { Toaster } from "sonner";
 
 // Components
 import Header from "./components/Header";
+import ProtectedRoute from "./components/ProtectedRoute";
+import PublicRoute from "./components/PublicRoute";
 
 // Pages
 import Home from "./pages/Home";
@@ -38,25 +40,92 @@ function App() {
 
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/orders" element={<Orders />} />
-            <Route path="/favorites" element={<Favorites />} />
-            <Route path="/wallet" element={<Wallet />} />
-            <Route path="/settings" element={<Settings />} />
+
+            {/* Public Routes - Restricted if logged in */}
+            <Route
+              path="/login"
+              element={
+                <PublicRoute>
+                  <Login />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/signup"
+              element={
+                <PublicRoute>
+                  <Signup />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/forgot-password"
+              element={
+                <PublicRoute>
+                  <ForgotPassword />
+                </PublicRoute>
+              }
+            />
+
+            {/* Protected Routes - Restricted if NOT logged in */}
+            <Route
+              path="/orders"
+              element={
+                <ProtectedRoute>
+                  <Orders />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/favorites"
+              element={
+                <ProtectedRoute>
+                  <Favorites />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/wallet"
+              element={
+                <ProtectedRoute>
+                  <Wallet />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/checkout"
+              element={
+                <ProtectedRoute>
+                  <Checkout />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tracking/:id"
+              element={
+                <ProtectedRoute>
+                  <OrderTracking />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Public Pages */}
             <Route path="/support" element={<Support />} />
             <Route path="/restaurant/:id" element={<Restaurant />} />
-            <Route path="/checkout" element={<Checkout />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/safety" element={<Safety />} />
-            <Route path="/tracking/:id" element={<OrderTracking />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:id" element={<BlogPost />} />
             <Route path="/careers" element={<Careers />} />
             <Route path="/about" element={<About />} />
-
-            {/* 2. ADD ROUTE */}
             <Route path="/help" element={<HelpCenter />} />
           </Routes>
         </div>

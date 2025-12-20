@@ -22,9 +22,37 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // --- HELPER: Create/Update User Document ---
+  // This ensures that whether a user signs up via Email or Google,
+  // we always have a corresponding document in the 'users' collection.
+  const createUserDocument = async (user, additionalData = {}) => {
+    if (!user) return;
+
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+
+    if (!userSnap.exists()) {
+      const { email, displayName, photoURL } = user;
+      const createdAt = new Date().toISOString();
+
+      try {
+        await setDoc(userRef, {
+          uid: user.uid,
+          email,
+          fullName: displayName || additionalData.fullName || "User",
+          photoURL: photoURL || null,
+          createdAt,
+          role: "customer", // Default role
+          ...additionalData,
+        });
+      } catch (error) {
+        console.error("Error creating user document", error);
+      }
+    }
+  };
+
   // 1. Sign up with Email & Password
   const signup = async (email, password, fullName) => {
-    // 1a. Create User in Auth
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       email,
@@ -32,21 +60,11 @@ export const AuthProvider = ({ children }) => {
     );
     const user = userCredential.user;
 
-    // 1b. Update Display Name
+    // Update Auth Profile immediately
     await updateProfile(user, { displayName: fullName });
 
-    // 1c. Create User Doc (Non-blocking)
-    try {
-      await setDoc(doc(db, "users", user.uid), {
-        uid: user.uid,
-        email: user.email,
-        fullName: fullName,
-        createdAt: new Date().toISOString(),
-        role: "customer",
-      });
-    } catch (e) {
-      console.error("Error saving user profile:", e);
-    }
+    // Create Firestore Document
+    await createUserDocument(user, { fullName });
 
     return user;
   };
@@ -56,32 +74,17 @@ export const AuthProvider = ({ children }) => {
     return signInWithEmailAndPassword(auth, email, password);
   };
 
-  // 3. Login with Google
+  // 3. Login with Google (POPUP METHOD)
+  // Much more reliable than Redirect for SPAs, avoids page reload loops.
   const googleSignIn = async () => {
     const provider = new GoogleAuthProvider();
-    // Force account selection
     provider.setCustomParameters({ prompt: "select_account" });
 
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
 
-    // Check/Create User Doc
-    try {
-      const userRef = doc(db, "users", user.uid);
-      const userSnap = await getDoc(userRef);
-
-      if (!userSnap.exists()) {
-        await setDoc(userRef, {
-          uid: user.uid,
-          email: user.email,
-          fullName: user.displayName,
-          createdAt: new Date().toISOString(),
-          role: "customer",
-        });
-      }
-    } catch (e) {
-      console.error("Error checking user profile:", e);
-    }
+    // Create Firestore Document if it doesn't exist
+    await createUserDocument(user);
 
     return user;
   };
@@ -96,7 +99,15 @@ export const AuthProvider = ({ children }) => {
     return sendPasswordResetEmail(auth, email);
   };
 
-  // 6. SINGLE SOURCE OF TRUTH: onAuthStateChanged
+  // 6. Update Profile Wrapper
+  const updateUserProfile = async (user, profileData) => {
+    if (!user) return;
+    await updateProfile(user, profileData);
+    // Force a re-render/update if needed by spreading state (optional in this flow)
+    setCurrentUser({ ...user, ...profileData });
+  };
+
+  // 7. GLOBAL AUTH OBSERVER
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
@@ -113,6 +124,7 @@ export const AuthProvider = ({ children }) => {
     googleSignIn,
     logout,
     resetPassword,
+    updateUserProfile,
   };
 
   return (
