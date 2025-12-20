@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
     base: mode === "gh-pages" ? "/food-delivery-app/" : "/",
     server: {
       headers: {
-        "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+        "Cross-Origin-Opener-Policy": "unsafe-none",
       },
     },
   };
