@@ -12,7 +12,7 @@ import {
   deleteUser,
 } from "firebase/auth";
 import { auth, db } from "../firebase";
-import { doc, setDoc, getDoc, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, deleteDoc, updateDoc } from "firebase/firestore";
 
 const AuthContext = createContext();
 
@@ -44,7 +44,7 @@ export const AuthProvider = ({ children }) => {
           fullName: displayName || additionalData.fullName || "User",
           photoURL: photoURL || null,
           createdAt,
-          role: "customer", // Default role
+          role: "customer",
           ...additionalData,
         });
       } catch (error) {
@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   // 1. Sign up with Email & Password
-  const signup = async (email, password, fullName) => {
+  const signup = async (email, password, fullName, phone) => {
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       email,
@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }) => {
     await updateProfile(user, { displayName: fullName });
 
     // Create Firestore Document
-    await createUserDocument(user, { fullName });
+    await createUserDocument(user, { fullName, phone });
 
     return user;
   };
@@ -109,6 +109,21 @@ export const AuthProvider = ({ children }) => {
     setCurrentUser({ ...user, ...profileData });
   };
 
+  // 6b. Update User Document (Firestore)
+  const updateUserDocument = async (userId, data) => {
+    try {
+      const userRef = doc(db, "users", userId);
+      // Use setDoc with merge: true to ensure it works even if doc is missing
+      await setDoc(userRef, data, { merge: true });
+
+      // Update local state to reflect changes immediately
+      setCurrentUser((prev) => ({ ...prev, ...data }));
+    } catch (error) {
+      console.error("Error updating user document:", error);
+      throw error;
+    }
+  };
+
   // 7. Delete Account
   const deleteAccount = async () => {
     if (!currentUser) return;
@@ -129,8 +144,36 @@ export const AuthProvider = ({ children }) => {
 
   // 7. GLOBAL AUTH OBSERVER
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          // Fetch user data from Firestore
+          const userRef = doc(db, "users", user.uid);
+          const userSnap = await getDoc(userRef);
+
+          if (userSnap.exists()) {
+            setCurrentUser({ ...user, ...userSnap.data() });
+          } else {
+            console.log("No user document found, creating one...");
+            // Create user document for legacy/google users who might lack one
+            await createUserDocument(user);
+
+            // Refetch to ensure we have the clean data source of truth
+            const newUserSnap = await getDoc(userRef);
+            if (newUserSnap.exists()) {
+              setCurrentUser({ ...user, ...newUserSnap.data() });
+            } else {
+              // Fallback if even creation failed (unlikely)
+              setCurrentUser(user);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+          setCurrentUser(user);
+        }
+      } else {
+        setCurrentUser(null);
+      }
       setLoading(false);
     });
 
@@ -145,6 +188,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     resetPassword,
     updateUserProfile,
+    updateUserDocument,
     deleteAccount,
   };
 

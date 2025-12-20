@@ -9,6 +9,7 @@ import {
   EyeOff,
   AlertCircle,
   CheckCircle,
+  Phone,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -19,6 +20,7 @@ const Signup = () => {
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
+    phone: "",
     password: "",
     confirmPassword: "",
   });
@@ -46,7 +48,12 @@ const Signup = () => {
 
     try {
       setLoading(true);
-      await signup(formData.email, formData.password, formData.fullName);
+      await signup(
+        formData.email,
+        formData.password,
+        formData.fullName,
+        formData.phone
+      );
       // Explicit navigation on success
       navigate("/");
     } catch (err) {
@@ -148,6 +155,21 @@ const Signup = () => {
               required
               className="appearance-none rounded-lg relative block w-full pl-10 px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-[#FF5200] focus:border-[#FF5200]"
               placeholder="Email address"
+              onChange={handleChange}
+            />
+          </div>
+
+          {/* Phone Number */}
+          <div className="relative group">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Phone className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              name="phone"
+              type="tel"
+              required
+              className="appearance-none rounded-lg relative block w-full pl-10 px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-[#FF5200] focus:border-[#FF5200]"
+              placeholder="Phone Number"
               onChange={handleChange}
             />
           </div>

@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 const Settings = () => {
-  const { currentUser, deleteAccount, logout } = useAuth();
+  const { currentUser, deleteAccount, logout, updateUserDocument } = useAuth();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -35,9 +35,21 @@ const Settings = () => {
     setFormData({ ...formData, [e.target.name]: value });
   };
 
-  const handleSave = (section) => {
-    // Logic for updating profile would go here (using updateUserProfile from context)
-    toast.success(`${section} settings saved successfully!`);
+  const handleSave = async (section) => {
+    if (section === "Personal") {
+      try {
+        await updateUserDocument(currentUser.uid, {
+          fullName: formData.fullName,
+          phone: formData.phone,
+        });
+        toast.success("Personal information updated successfully!");
+      } catch (error) {
+        toast.error("Failed to update profile.");
+        console.error(error);
+      }
+    } else {
+      toast.success(`${section} settings saved successfully!`);
+    }
   };
 
   const handleDeleteAccount = async () => {
