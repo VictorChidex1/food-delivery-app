@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import Footer from "../components/Footer";
+import { collection, addDoc } from "firebase/firestore";
+import { db } from "../firebase";
 
 const Careers = () => {
   const [selectedJob, setSelectedJob] = useState(null);
@@ -162,7 +164,8 @@ const Careers = () => {
   };
   // ---------------------------
 
-  const handleFormSubmit = (e) => {
+  // --- FIREBASE INTEGRATION ---
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
 
     if (!resume) {
@@ -172,13 +175,37 @@ const Careers = () => {
 
     setIsSubmitting(true);
 
-    // Simulate Network Request
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      // Prepare Application Data
+      const formData = new FormData(e.target);
+      const applicationData = {
+        jobId: selectedJob.id,
+        jobTitle: selectedJob.title,
+        firstName: formData.get("firstName"),
+        lastName: formData.get("lastName"),
+        email: formData.get("email"),
+        portfolioUrl: formData.get("portfolioUrl") || "",
+        resumeName: resume.name, // Storing filename only for now (No Storage)
+        whyJoin: formData.get("whyJoin"),
+        appliedAt: new Date().toISOString(),
+        status: "new",
+      };
+
+      // Save to Firestore
+      await addDoc(collection(db, "applications"), applicationData);
+
+      // Success
+      toast.success("Application Sent! We'll be in touch soon. 🚀");
+
+      // Cleanup
       setSelectedJob(null);
       setResume(null);
-      toast.success("Application Sent! We'll be in touch soon. 🚀");
-    }, 2000);
+    } catch (error) {
+      console.error("Error submitting application:", error);
+      toast.error("Failed to submit application. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -373,6 +400,7 @@ const Careers = () => {
                       </label>
                       <input
                         required
+                        name="firstName"
                         type="text"
                         placeholder="e.g. Victor"
                         className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-[#FF5200] transition-colors text-sm"
@@ -384,6 +412,7 @@ const Careers = () => {
                       </label>
                       <input
                         required
+                        name="lastName"
                         type="text"
                         placeholder="e.g. Chidera"
                         className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-[#FF5200] transition-colors text-sm"
@@ -397,6 +426,7 @@ const Careers = () => {
                     </label>
                     <input
                       required
+                      name="email"
                       type="email"
                       placeholder="you@example.com"
                       className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-[#FF5200] transition-colors text-sm"
@@ -409,6 +439,7 @@ const Careers = () => {
                     </label>
                     <input
                       type="url"
+                      name="portfolioUrl"
                       placeholder="https://..."
                       className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-[#FF5200] transition-colors text-sm"
                     />
@@ -493,6 +524,7 @@ const Careers = () => {
                     </label>
                     <textarea
                       rows="3"
+                      name="whyJoin"
                       placeholder="Tell us a bit about yourself..."
                       className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-[#FF5200] transition-colors text-sm resize-none"
                     ></textarea>
