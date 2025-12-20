@@ -25,6 +25,7 @@ const Settings = () => {
         ...prev,
         fullName: currentUser.displayName || currentUser.fullName || "",
         email: currentUser.email || "",
+        phone: currentUser.phone || "",
       }));
     }
   }, [currentUser]);
