@@ -13,27 +13,32 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
 
-    // Restaurants: Public Read, Write only if authenticated (or admin)
-    // For now, allowing all auth users to write to make the upload script work easily from the app context if needed
+    // Helper to check if user is an Admin
+    function isAdmin() {
+      // Check the 'role' field in the user's document
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+    }
+
+    // Restaurants: Public Read, Write only for ADMIN
     match /restaurants/{restaurantId} {
       allow read: if true;
-      allow write: if isAuthenticated(); 
+      allow write: if isAdmin(); 
     }
     
     // Users: Users can read/write their own profile
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read, write: if isOwner(userId) || isAdmin();
     }
     
-    // Orders: Users can read/write their own orders
+    // Orders: Users can read/write their own orders, Admins can read everything
     match /orders/{orderId} {
-      allow read, write: if isAuthenticated() && (resource.data.userId == request.auth.uid || request.resource.data.userId == request.auth.uid);
+      allow read, write: if isAuthenticated() && (resource.data.userId == request.auth.uid || request.resource.data.userId == request.auth.uid || isAdmin());
     }
 
-    // Applications: Public can create (submit), but NO ONE can read publicly (admin only)
+    // Applications: Public can create, Admin can read/update/delete
     match /applications/{applicationId} {
       allow create: if true;
-      allow read, update, delete: if false;
+      allow read, update, delete: if isAdmin();
     }
   }
 }

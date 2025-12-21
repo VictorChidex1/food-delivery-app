@@ -7,6 +7,8 @@ import { Toaster } from "sonner";
 import Header from "./components/Header";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PublicRoute from "./components/PublicRoute";
+import AdminRoute from "./components/AdminRoute";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 
 // Pages
 import Home from "./pages/Home";
@@ -98,6 +100,16 @@ function App() {
                 <ProtectedRoute>
                   <Settings />
                 </ProtectedRoute>
+              }
+            />
+
+            {/* Admin Routes */}
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
               }
             />
             <Route

@@ -13,6 +13,7 @@ import {
   Settings,
   HelpCircle,
   LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from "clsx";
@@ -87,6 +88,9 @@ const Header = () => {
   const profileDropdownRef = useRef(null);
 
   const userMenuItems = [
+    ...(currentUser?.role === "admin"
+      ? [{ icon: ShieldCheck, label: "Admin Dashboard", link: "/admin" }]
+      : []),
     { icon: Box, label: "My Orders", link: "/orders" },
     { icon: Heart, label: "Favorites", link: "/favorites" },
     { icon: CreditCard, label: "Wallet", link: "/wallet" },

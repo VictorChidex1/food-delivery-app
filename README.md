@@ -18,6 +18,7 @@ FoodFlow is a modern, feature-rich food delivery application built with React an
 - **🔔 Real-time Notifications**: Toast notifications for user actions using Sonner.
 - **🎨 Modern UI/UX**: Smooth animations with Framer Motion and clean iconography with Lucide React.
 - **📚 Content Pages**: Integrated Blog, Careers, About Us, and Help Center pages.
+- **🛡️ Admin Dashboard**: Secure area for managing job applications and platform data.
 
 ## 🛠️ Tech Stack
 
